@@ -70,10 +70,6 @@ const NewReport = () => {
         
         console.log('Uploading file:', fileName, 'Size:', file.size);
 
-        // Create a FormData object to ensure proper file handling
-        const formData = new FormData();
-        formData.append('file', file);
-
         // Upload file to storage bucket with better error handling
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('report-images')
@@ -96,15 +92,6 @@ const NewReport = () => {
           .getPublicUrl(fileName);
 
         console.log('Public URL generated:', publicUrl);
-        
-        // Test if the URL is accessible
-        try {
-          const testResponse = await fetch(publicUrl, { method: 'HEAD' });
-          console.log('URL accessibility test:', testResponse.status);
-        } catch (testError) {
-          console.warn('URL test failed:', testError);
-        }
-
         return publicUrl;
       } catch (error) {
         console.error(`Error uploading file ${file.name}:`, error);
@@ -119,6 +106,7 @@ const NewReport = () => {
     mutationFn: async (reportData: any) => {
       let imageUrls: string[] = [];
       
+      // Handle image uploads first
       if (selectedImages.length > 0) {
         setIsUploading(true);
         try {
@@ -128,8 +116,9 @@ const NewReport = () => {
           toast.success(`${imageUrls.length} images uploaded successfully!`);
         } catch (error) {
           console.error('Error uploading images:', error);
-          toast.error(`Failed to upload images: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          throw error;
+          const errorMessage = error instanceof Error ? error.message : 'Unknown upload error';
+          toast.error(`Failed to upload images: ${errorMessage}`);
+          throw new Error(`Image upload failed: ${errorMessage}`);
         } finally {
           setIsUploading(false);
         }
@@ -137,14 +126,23 @@ const NewReport = () => {
 
       console.log('Submitting report with image URLs:', imageUrls);
 
+      // Create report payload without user_id (let it be null for now)
       const reportPayload = {
-        ...reportData,
+        title: reportData.title,
+        description: reportData.description,
+        type: reportData.type,
+        category_id: reportData.category_id || null,
+        subcategory_id: reportData.subcategory_id || null,
+        location_address: reportData.location_address || null,
+        location_lat: reportData.location_lat,
+        location_lng: reportData.location_lng,
         image_url: imageUrls.length > 0 ? imageUrls.join(',') : null,
-        user_id: '550e8400-e29b-41d4-a716-446655440000' // Temporary user ID
+        user_id: null // Allow null for now since we don't have proper auth
       };
 
       console.log('Report payload:', reportPayload);
 
+      // Insert the report
       const { data, error } = await supabase
         .from('reports')
         .insert(reportPayload)
@@ -153,7 +151,13 @@ const NewReport = () => {
 
       if (error) {
         console.error('Error creating report:', error);
-        throw error;
+        console.error('Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw new Error(`Database error: ${error.message}`);
       }
       
       console.log('Report created successfully:', data);
@@ -168,7 +172,8 @@ const NewReport = () => {
     },
     onError: (error) => {
       console.error('Submission error:', error);
-      toast.error(`Failed to submit report: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to submit report: ${errorMessage}`);
     }
   });
 
@@ -240,8 +245,18 @@ const NewReport = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.description || !formData.category_id) {
-      toast.error('Please fill in all required fields.');
+    if (!formData.title.trim()) {
+      toast.error('Please enter a title for your report.');
+      return;
+    }
+    
+    if (!formData.description.trim()) {
+      toast.error('Please enter a description for your report.');
+      return;
+    }
+    
+    if (!formData.category_id) {
+      toast.error('Please select a category for your report.');
       return;
     }
     
