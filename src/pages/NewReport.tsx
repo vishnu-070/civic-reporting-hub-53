@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -65,30 +64,53 @@ const NewReport = () => {
 
   const uploadImages = async (files: File[]): Promise<string[]> => {
     const uploadPromises = files.map(async (file, index) => {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${index}.${fileExt}`;
-      const filePath = `${fileName}`;
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${index}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        
+        console.log('Uploading file:', fileName, 'Size:', file.size);
 
-      console.log('Uploading file:', fileName, 'to bucket: report-images');
+        // Upload file to storage bucket
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('report-images')
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
 
-      const { data, error } = await supabase.storage
-        .from('report-images')
-        .upload(filePath, file);
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
+        }
 
-      if (error) {
-        console.error('Upload error:', error);
+        console.log('File uploaded successfully:', uploadData);
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('report-images')
+          .getPublicUrl(fileName);
+
+        console.log('Public URL generated:', publicUrl);
+        
+        // Verify the upload by trying to get the file info
+        const { data: fileData, error: fileError } = await supabase.storage
+          .from('report-images')
+          .list('', {
+            limit: 1,
+            search: fileName
+          });
+
+        if (fileError) {
+          console.warn('Could not verify file upload:', fileError);
+        } else {
+          console.log('File verification successful:', fileData);
+        }
+
+        return publicUrl;
+      } catch (error) {
+        console.error(`Error uploading file ${file.name}:`, error);
         throw error;
       }
-
-      console.log('File uploaded successfully:', data);
-
-      // Get public URL for the uploaded file
-      const { data: { publicUrl } } = supabase.storage
-        .from('report-images')
-        .getPublicUrl(filePath);
-
-      console.log('Public URL generated:', publicUrl);
-      return publicUrl;
     });
 
     return Promise.all(uploadPromises);
@@ -101,24 +123,32 @@ const NewReport = () => {
       if (selectedImages.length > 0) {
         setIsUploading(true);
         try {
+          console.log('Starting upload of', selectedImages.length, 'images');
           imageUrls = await uploadImages(selectedImages);
-          console.log('All images uploaded:', imageUrls);
+          console.log('All images uploaded successfully:', imageUrls);
+          toast.success(`${imageUrls.length} images uploaded successfully!`);
         } catch (error) {
           console.error('Error uploading images:', error);
-          toast.error('Failed to upload images. Please try again.');
+          toast.error(`Failed to upload images: ${error instanceof Error ? error.message : 'Unknown error'}`);
           throw error;
         } finally {
           setIsUploading(false);
         }
       }
 
+      console.log('Submitting report with image URLs:', imageUrls);
+
+      const reportPayload = {
+        ...reportData,
+        image_url: imageUrls.length > 0 ? imageUrls.join(',') : null,
+        user_id: '550e8400-e29b-41d4-a716-446655440000' // Temporary user ID
+      };
+
+      console.log('Report payload:', reportPayload);
+
       const { data, error } = await supabase
         .from('reports')
-        .insert({
-          ...reportData,
-          image_url: imageUrls.length > 0 ? imageUrls.join(',') : null,
-          user_id: '550e8400-e29b-41d4-a716-446655440000' // Temporary user ID
-        })
+        .insert(reportPayload)
         .select()
         .single();
 
@@ -127,16 +157,19 @@ const NewReport = () => {
         throw error;
       }
       
+      console.log('Report created successfully:', data);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Report submission successful:', data);
       toast.success('Report submitted successfully!');
       queryClient.invalidateQueries({ queryKey: ['reports'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-reports'] });
       navigate('/citizen');
     },
     onError: (error) => {
       console.error('Submission error:', error);
-      toast.error('Failed to submit report. Please try again.');
+      toast.error(`Failed to submit report: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   });
 
@@ -149,10 +182,28 @@ const NewReport = () => {
       return;
     }
     
-    setSelectedImages(prev => [...prev, ...files]);
+    // Validate file types and sizes
+    const validFiles = files.filter(file => {
+      const isValidType = file.type.startsWith('image/');
+      const isValidSize = file.size <= 50 * 1024 * 1024; // 50MB
+      
+      if (!isValidType) {
+        toast.error(`${file.name} is not a valid image file.`);
+        return false;
+      }
+      
+      if (!isValidSize) {
+        toast.error(`${file.name} is too large. Maximum size is 50MB.`);
+        return false;
+      }
+      
+      return true;
+    });
+    
+    setSelectedImages(prev => [...prev, ...validFiles]);
     
     // Create preview URLs
-    files.forEach(file => {
+    validFiles.forEach(file => {
       const reader = new FileReader();
       reader.onload = (e) => {
         setImagePreviewUrls(prev => [...prev, e.target?.result as string]);
@@ -195,6 +246,7 @@ const NewReport = () => {
       return;
     }
     
+    console.log('Submitting form with', selectedImages.length, 'selected images');
     submitReport.mutate(formData);
   };
 
