@@ -5,7 +5,6 @@ import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart3, Users, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 
@@ -97,84 +96,6 @@ const AdminDashboard = () => {
     });
   };
 
-  const filterReports = (filterType: string) => {
-    switch (filterType) {
-      case 'pending':
-        return reports.filter(report => report.status === 'pending');
-      case 'resolved':
-        return reports.filter(report => report.status === 'resolved');
-      case 'emergency':
-        return reports.filter(report => report.type === 'emergency');
-      case 'total':
-      default:
-        return reports;
-    }
-  };
-
-  const renderReportsList = (filteredReports: any[]) => (
-    <div className="space-y-4">
-      {filteredReports.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          No reports found for this category.
-        </div>
-      ) : (
-        filteredReports.map((report: any) => (
-          <div key={report.id} className="border rounded-lg p-4 space-y-3">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <h4 className="font-semibold">{report.title}</h4>
-                <p className="text-sm text-gray-600 mt-1">{report.description}</p>
-                <div className="flex flex-col gap-1 mt-2">
-                  <p className="text-xs text-gray-500">
-                    Reported by: {report.users?.name} | {report.categories?.name} - {report.subcategories?.name}
-                  </p>
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      <span>Created: {formatDateTime(report.created_at)}</span>
-                    </div>
-                    {report.updated_at !== report.created_at && (
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>Updated: {formatDateTime(report.updated_at)}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 ml-4">
-                {report.type === 'emergency' && (
-                  <Badge variant="destructive">Emergency</Badge>
-                )}
-                {getStatusBadge(report.status)}
-              </div>
-            </div>
-            
-            <div className="flex gap-2">
-              {report.status === 'pending' && (
-                <Button 
-                  size="sm" 
-                  onClick={() => updateReportStatus(report.id, 'in_progress')}
-                >
-                  Start Processing
-                </Button>
-              )}
-              {report.status === 'in_progress' && (
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => updateReportStatus(report.id, 'resolved')}
-                >
-                  Mark Resolved
-                </Button>
-              )}
-            </div>
-          </div>
-        ))
-      )}
-    </div>
-  );
-
   return (
     <Layout title="Admin Dashboard">
       <div className="space-y-6">
@@ -223,33 +144,70 @@ const AdminDashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle>Reports Management</CardTitle>
-            <CardDescription>Filter and manage reports by category with timestamps</CardDescription>
+            <CardDescription>All reports with timestamps</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="total" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="total">All Reports ({stats?.total || 0})</TabsTrigger>
-                <TabsTrigger value="pending">Pending ({stats?.pending || 0})</TabsTrigger>
-                <TabsTrigger value="resolved">Resolved ({stats?.resolved || 0})</TabsTrigger>
-                <TabsTrigger value="emergency">Emergency ({stats?.emergency || 0})</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="total" className="mt-6">
-                {renderReportsList(filterReports('total'))}
-              </TabsContent>
-              
-              <TabsContent value="pending" className="mt-6">
-                {renderReportsList(filterReports('pending'))}
-              </TabsContent>
-              
-              <TabsContent value="resolved" className="mt-6">
-                {renderReportsList(filterReports('resolved'))}
-              </TabsContent>
-              
-              <TabsContent value="emergency" className="mt-6">
-                {renderReportsList(filterReports('emergency'))}
-              </TabsContent>
-            </Tabs>
+            <div className="space-y-4">
+              {reports.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No reports found.
+                </div>
+              ) : (
+                reports.map((report: any) => (
+                  <div key={report.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h4 className="font-semibold">{report.title}</h4>
+                        <p className="text-sm text-gray-600 mt-1">{report.description}</p>
+                        <div className="flex flex-col gap-1 mt-2">
+                          <p className="text-xs text-gray-500">
+                            Reported by: {report.users?.name} | {report.categories?.name} - {report.subcategories?.name}
+                          </p>
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              <span>Created: {formatDateTime(report.created_at)}</span>
+                            </div>
+                            {report.updated_at !== report.created_at && (
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                <span>Updated: {formatDateTime(report.updated_at)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        {report.type === 'emergency' && (
+                          <Badge variant="destructive">Emergency</Badge>
+                        )}
+                        {getStatusBadge(report.status)}
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      {report.status === 'pending' && (
+                        <Button 
+                          size="sm" 
+                          onClick={() => updateReportStatus(report.id, 'in_progress')}
+                        >
+                          Start Processing
+                        </Button>
+                      )}
+                      {report.status === 'in_progress' && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => updateReportStatus(report.id, 'resolved')}
+                        >
+                          Mark Resolved
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
