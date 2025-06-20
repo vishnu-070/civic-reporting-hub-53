@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Layout from '@/components/Layout';
@@ -85,73 +84,73 @@ const AdminDashboard = () => {
   return (
     <Layout title="Admin Dashboard">
       <div className="space-y-6">
-        <DashboardStats defaultValue={activeTab} onValueChange={setActiveTab} />
-        
-        <TabsContent value="total" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>All Reports</CardTitle>
-              <CardDescription>Complete list of all reports with timestamps</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ReportFilters
-                emergencyFilter={emergencyFilter}
-                setEmergencyFilter={setEmergencyFilter}
-                categoryFilter={categoryFilter}
-                setCategoryFilter={setCategoryFilter}
-                categories={categories}
-              />
-              <ReportsList
-                reports={filterReports()}
-                onStatusUpdate={updateReportStatus}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="pending" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pending Reports</CardTitle>
-              <CardDescription>Reports waiting to be processed</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ReportFilters
-                emergencyFilter={emergencyFilter}
-                setEmergencyFilter={setEmergencyFilter}
-                categoryFilter={categoryFilter}
-                setCategoryFilter={setCategoryFilter}
-                categories={categories}
-              />
-              <ReportsList
-                reports={filterReports('pending')}
-                onStatusUpdate={updateReportStatus}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="resolved" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Resolved Reports</CardTitle>
-              <CardDescription>Successfully completed reports</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ReportFilters
-                emergencyFilter={emergencyFilter}
-                setEmergencyFilter={setEmergencyFilter}
-                categoryFilter={categoryFilter}
-                setCategoryFilter={setCategoryFilter}
-                categories={categories}
-              />
-              <ReportsList
-                reports={filterReports('resolved')}
-                onStatusUpdate={updateReportStatus}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <DashboardStats defaultValue={activeTab} onValueChange={setActiveTab}>
+          <TabsContent value="total" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>All Reports</CardTitle>
+                <CardDescription>Complete list of all reports with timestamps</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ReportFilters
+                  emergencyFilter={emergencyFilter}
+                  setEmergencyFilter={setEmergencyFilter}
+                  categoryFilter={categoryFilter}
+                  setCategoryFilter={setCategoryFilter}
+                  categories={categories}
+                />
+                <ReportsList
+                  reports={filterReports()}
+                  onStatusUpdate={updateReportStatus}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="pending" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Pending Reports</CardTitle>
+                <CardDescription>Reports waiting to be processed</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ReportFilters
+                  emergencyFilter={emergencyFilter}
+                  setEmergencyFilter={setEmergencyFilter}
+                  categoryFilter={categoryFilter}
+                  setCategoryFilter={setCategoryFilter}
+                  categories={categories}
+                />
+                <ReportsList
+                  reports={filterReports('pending')}
+                  onStatusUpdate={updateReportStatus}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="resolved" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Resolved Reports</CardTitle>
+                <CardDescription>Successfully completed reports</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ReportFilters
+                  emergencyFilter={emergencyFilter}
+                  setEmergencyFilter={setEmergencyFilter}
+                  categoryFilter={categoryFilter}
+                  setCategoryFilter={setCategoryFilter}
+                  categories={categories}
+                />
+                <ReportsList
+                  reports={filterReports('resolved')}
+                  onStatusUpdate={updateReportStatus}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </DashboardStats>
       </div>
     </Layout>
   );

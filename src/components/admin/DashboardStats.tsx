@@ -1,6 +1,5 @@
 
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart3, AlertTriangle, CheckCircle } from 'lucide-react';
@@ -8,9 +7,10 @@ import { BarChart3, AlertTriangle, CheckCircle } from 'lucide-react';
 interface DashboardStatsProps {
   defaultValue: string;
   onValueChange: (value: string) => void;
+  children: React.ReactNode;
 }
 
-const DashboardStats = ({ defaultValue, onValueChange }: DashboardStatsProps) => {
+const DashboardStats = ({ defaultValue, onValueChange, children }: DashboardStatsProps) => {
   const { data: stats } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: async () => {
@@ -52,6 +52,7 @@ const DashboardStats = ({ defaultValue, onValueChange }: DashboardStatsProps) =>
           Resolved ({stats?.resolved || 0})
         </TabsTrigger>
       </TabsList>
+      {children}
     </Tabs>
   );
 };
