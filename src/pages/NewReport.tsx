@@ -23,7 +23,6 @@ const NewReport = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [subcategoryId, setSubcategoryId] = useState('');
   const [manualLocation, setManualLocation] = useState('');
   const [autoLocation, setAutoLocation] = useState('');
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
@@ -52,20 +51,6 @@ const NewReport = () => {
       if (error) throw error;
       return data || [];
     }
-  });
-
-  const { data: subcategories = [] } = useQuery({
-    queryKey: ['subcategories', categoryId],
-    queryFn: async () => {
-      if (!categoryId) return [];
-      const { data, error } = await supabase
-        .from('subcategories')
-        .select('*')
-        .eq('category_id', categoryId);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!categoryId
   });
 
   const getCurrentLocation = () => {
@@ -158,15 +143,6 @@ const NewReport = () => {
       return;
     }
 
-    // For non-emergency reports, subcategory is still required
-    if (type === 'non_emergency' && !subcategoryId) {
-      toast({
-        title: "Please select a subcategory",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setLoading(true);
     try {
       let imageUrls: string[] = [];
@@ -183,7 +159,7 @@ const NewReport = () => {
           title,
           description,
           category_id: categoryId,
-          subcategory_id: type === 'emergency' ? null : subcategoryId,
+          subcategory_id: null,
           type,
           location_address: locationToUse,
           image_url: imageUrls.length > 0 ? imageUrls.join(',') : null,
@@ -214,7 +190,6 @@ const NewReport = () => {
     setTitle('');
     setDescription('');
     setCategoryId('');
-    setSubcategoryId('');
     setManualLocation('');
     setAutoLocation('');
     setSelectedImages([]);
@@ -378,10 +353,7 @@ const NewReport = () => {
                   
                   <div>
                     <Label htmlFor="non-emergency-category">Category *</Label>
-                    <Select value={categoryId} onValueChange={(value) => {
-                      setCategoryId(value);
-                      setSubcategoryId('');
-                    }}>
+                    <Select value={categoryId} onValueChange={setCategoryId}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
@@ -394,24 +366,6 @@ const NewReport = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
-                  {subcategories.length > 0 && (
-                    <div>
-                      <Label htmlFor="non-emergency-subcategory">Subcategory *</Label>
-                      <Select value={subcategoryId} onValueChange={setSubcategoryId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select subcategory" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {subcategories.map((subcategory: any) => (
-                            <SelectItem key={subcategory.id} value={subcategory.id}>
-                              {subcategory.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
                   
                   <div>
                     <Label htmlFor="non-emergency-description">Description *</Label>
