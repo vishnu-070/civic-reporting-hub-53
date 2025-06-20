@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -29,6 +30,7 @@ const NewReport = () => {
   const [locationLoading, setLocationLoading] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string>('');
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -57,70 +59,125 @@ const NewReport = () => {
   });
 
   const startCamera = async () => {
+    setCameraError('');
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } // Use back camera by default
-      });
+      console.log('Requesting camera access...');
+      
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera not supported by this browser');
+      }
+
+      const constraints = {
+        video: {
+          facingMode: 'environment', // Use back camera by default
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      };
+
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('Camera access granted:', mediaStream);
+      
       setStream(mediaStream);
       setShowCamera(true);
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
+      // Wait for the video element to be ready
+      setTimeout(() => {
+        if (videoRef.current && mediaStream) {
+          videoRef.current.srcObject = mediaStream;
+          videoRef.current.onloadedmetadata = () => {
+            console.log('Video metadata loaded');
+            videoRef.current?.play().catch(console.error);
+          };
+        }
+      }, 100);
+
     } catch (error) {
       console.error('Error accessing camera:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown camera error';
+      setCameraError(errorMessage);
+      
       toast({
-        title: "Camera access denied",
-        description: "Please enable camera access to take photos.",
+        title: "Camera access failed",
+        description: errorMessage,
         variant: "destructive"
       });
     }
   };
 
   const stopCamera = () => {
+    console.log('Stopping camera...');
     if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach(track => {
+        track.stop();
+        console.log('Track stopped:', track.kind);
+      });
       setStream(null);
     }
     setShowCamera(false);
+    setCameraError('');
   };
 
   const capturePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const video = videoRef.current;
-      const context = canvas.getContext('2d');
-      
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      
-      if (context) {
-        context.drawImage(video, 0, 0);
-        
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
-            
-            if (selectedImages.length >= 5) {
-              toast({
-                title: "Too many images",
-                description: "You can upload up to 5 images only.",
-                variant: "destructive"
-              });
-              return;
-            }
-            
-            setSelectedImages(prev => [...prev, file]);
-            stopCamera();
-            
-            toast({
-              title: "Photo captured!",
-              description: "Photo has been added to your report."
-            });
-          }
-        }, 'image/jpeg', 0.9);
-      }
+    if (!videoRef.current || !canvasRef.current) {
+      toast({
+        title: "Camera not ready",
+        description: "Please wait for the camera to load.",
+        variant: "destructive"
+      });
+      return;
     }
+
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+    const context = canvas.getContext('2d');
+    
+    if (!context) {
+      toast({
+        title: "Canvas error",
+        description: "Could not get canvas context.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    
+    // Draw the video frame to canvas
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Convert canvas to blob
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
+        
+        if (selectedImages.length >= 5) {
+          toast({
+            title: "Too many images",
+            description: "You can upload up to 5 images only.",
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        setSelectedImages(prev => [...prev, file]);
+        stopCamera();
+        
+        toast({
+          title: "Photo captured!",
+          description: "Photo has been added to your report."
+        });
+      } else {
+        toast({
+          title: "Capture failed",
+          description: "Could not capture photo. Please try again.",
+          variant: "destructive"
+        });
+      }
+    }, 'image/jpeg', 0.9);
   };
 
   useEffect(() => {
@@ -296,22 +353,40 @@ const NewReport = () => {
           </Button>
         </div>
         
+        {cameraError && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <strong>Camera Error:</strong> {cameraError}
+          </div>
+        )}
+        
         {showCamera && (
           <div className="space-y-3">
-            <div className="relative bg-black rounded-lg overflow-hidden">
+            <div className="relative bg-black rounded-lg overflow-hidden min-h-[200px] flex items-center justify-center">
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
+                muted
                 className="w-full max-h-64 object-cover"
+                style={{ transform: 'scaleX(-1)' }} // Mirror the video for better UX
               />
               <canvas ref={canvasRef} className="hidden" />
+              
+              {!stream && (
+                <div className="absolute inset-0 flex items-center justify-center text-white">
+                  <div className="text-center">
+                    <Camera className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm opacity-75">Loading camera...</p>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex gap-2 justify-center">
               <Button
                 type="button"
                 onClick={capturePhoto}
                 className="flex items-center gap-2"
+                disabled={!stream}
               >
                 <Camera className="h-4 w-4" />
                 Take Photo
