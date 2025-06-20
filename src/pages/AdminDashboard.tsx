@@ -6,10 +6,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
-import { BarChart3, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { BarChart3, AlertTriangle, CheckCircle, Clock, Filter } from 'lucide-react';
 
 const AdminDashboard = () => {
+  const [emergencyFilter, setEmergencyFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+
   const { data: reports = [], refetch } = useQuery({
     queryKey: ['admin-reports'],
     queryFn: async () => {
@@ -23,6 +29,19 @@ const AdminDashboard = () => {
           officers(name)
         `)
         .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name');
       
       if (error) throw error;
       return data || [];
@@ -91,16 +110,82 @@ const AdminDashboard = () => {
     });
   };
 
-  const filterReports = (status?: string) => {
-    if (!status) return reports;
-    return reports.filter((report: any) => report.status === status);
+  const applyFilters = (reportsList: any[]) => {
+    let filtered = reportsList;
+
+    // Filter by emergency type
+    if (emergencyFilter === 'emergency') {
+      filtered = filtered.filter(report => report.type === 'emergency');
+    } else if (emergencyFilter === 'non-emergency') {
+      filtered = filtered.filter(report => report.type !== 'emergency');
+    }
+
+    // Filter by category
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(report => report.category_id === categoryFilter);
+    }
+
+    return filtered;
   };
+
+  const filterReports = (status?: string) => {
+    let filteredReports = status ? reports.filter((report: any) => report.status === status) : reports;
+    return applyFilters(filteredReports);
+  };
+
+  const renderFilters = () => (
+    <div className="flex flex-col sm:flex-row gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+      <div className="flex items-center gap-2">
+        <Filter className="h-4 w-4" />
+        <span className="text-sm font-medium">Filters:</span>
+      </div>
+      
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="emergency-filter" className="text-xs text-gray-600">Report Type</Label>
+        <RadioGroup
+          value={emergencyFilter}
+          onValueChange={setEmergencyFilter}
+          className="flex flex-row gap-4"
+        >
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="all" id="all" />
+            <Label htmlFor="all" className="text-sm">All</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="emergency" id="emergency" />
+            <Label htmlFor="emergency" className="text-sm">Emergency</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="non-emergency" id="non-emergency" />
+            <Label htmlFor="non-emergency" className="text-sm">Non-Emergency</Label>
+          </div>
+        </RadioGroup>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="category-filter" className="text-xs text-gray-600">Category</Label>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Select category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            {categories.map((category: any) => (
+              <SelectItem key={category.id} value={category.id}>
+                {category.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
 
   const renderReportsList = (filteredReports: any[]) => (
     <div className="space-y-4">
       {filteredReports.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
-          No reports found.
+          No reports found with the current filters.
         </div>
       ) : (
         filteredReports.map((report: any) => (
@@ -186,7 +271,8 @@ const AdminDashboard = () => {
                 <CardDescription>Complete list of all reports with timestamps</CardDescription>
               </CardHeader>
               <CardContent>
-                {renderReportsList(reports)}
+                {renderFilters()}
+                {renderReportsList(filterReports())}
               </CardContent>
             </Card>
           </TabsContent>
@@ -198,6 +284,7 @@ const AdminDashboard = () => {
                 <CardDescription>Reports waiting to be processed</CardDescription>
               </CardHeader>
               <CardContent>
+                {renderFilters()}
                 {renderReportsList(filterReports('pending'))}
               </CardContent>
             </Card>
@@ -210,6 +297,7 @@ const AdminDashboard = () => {
                 <CardDescription>Successfully completed reports</CardDescription>
               </CardHeader>
               <CardContent>
+                {renderFilters()}
                 {renderReportsList(filterReports('resolved'))}
               </CardContent>
             </Card>
