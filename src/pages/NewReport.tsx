@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { AlertTriangle, Phone, MapPin } from 'lucide-react';
+import { AlertTriangle, Phone, MapPin, Upload, X } from 'lucide-react';
 
 const NewReport = () => {
   const { user } = useAuth();
@@ -24,8 +24,11 @@ const NewReport = () => {
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [subcategoryId, setSubcategoryId] = useState('');
-  const [location, setLocation] = useState('');
+  const [manualLocation, setManualLocation] = useState('');
+  const [autoLocation, setAutoLocation] = useState('');
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
 
   const { data: emergencyCategories = [] } = useQuery({
     queryKey: ['emergency-categories'],
@@ -65,8 +68,89 @@ const NewReport = () => {
     enabled: !!categoryId
   });
 
+  const getCurrentLocation = () => {
+    setLocationLoading(true);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          try {
+            // Reverse geocoding to get address
+            const response = await fetch(
+              `https://api.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+            );
+            const data = await response.json();
+            setAutoLocation(data.display_name || `${latitude}, ${longitude}`);
+          } catch (error) {
+            setAutoLocation(`${latitude}, ${longitude}`);
+          }
+          setLocationLoading(false);
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          toast({
+            title: "Location access denied",
+            description: "Please enable location access or enter manually.",
+            variant: "destructive"
+          });
+          setLocationLoading(false);
+        }
+      );
+    } else {
+      toast({
+        title: "Location not supported",
+        description: "Your browser doesn't support location services.",
+        variant: "destructive"
+      });
+      setLocationLoading(false);
+    }
+  };
+
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (selectedImages.length + files.length > 5) {
+      toast({
+        title: "Too many images",
+        description: "You can upload up to 5 images only.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setSelectedImages(prev => [...prev, ...files]);
+  };
+
+  const removeImage = (index: number) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadImages = async () => {
+    const uploadedUrls: string[] = [];
+    
+    for (const image of selectedImages) {
+      const fileExt = image.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
+      
+      const { data, error } = await supabase.storage
+        .from('report-images')
+        .upload(fileName, image);
+      
+      if (error) {
+        console.error('Error uploading image:', error);
+        continue;
+      }
+      
+      const { data: urlData } = supabase.storage
+        .from('report-images')
+        .getPublicUrl(fileName);
+      
+      uploadedUrls.push(urlData.publicUrl);
+    }
+    
+    return uploadedUrls;
+  };
+
   const submitReport = async (type: 'emergency' | 'non_emergency') => {
-    if (!title || !description || !categoryId || !subcategoryId) {
+    if (!title || !description || !categoryId) {
       toast({
         title: "Please fill all required fields",
         variant: "destructive"
@@ -74,8 +158,24 @@ const NewReport = () => {
       return;
     }
 
+    // For non-emergency reports, subcategory is still required
+    if (type === 'non_emergency' && !subcategoryId) {
+      toast({
+        title: "Please select a subcategory",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
     try {
+      let imageUrls: string[] = [];
+      if (selectedImages.length > 0) {
+        imageUrls = await uploadImages();
+      }
+
+      const locationToUse = autoLocation || manualLocation;
+
       const { error } = await supabase
         .from('reports')
         .insert([{
@@ -83,9 +183,10 @@ const NewReport = () => {
           title,
           description,
           category_id: categoryId,
-          subcategory_id: subcategoryId,
+          subcategory_id: type === 'emergency' ? null : subcategoryId,
           type,
-          location_address: location,
+          location_address: locationToUse,
+          image_url: imageUrls.length > 0 ? imageUrls.join(',') : null,
           status: 'pending'
         }]);
 
@@ -114,7 +215,9 @@ const NewReport = () => {
     setDescription('');
     setCategoryId('');
     setSubcategoryId('');
-    setLocation('');
+    setManualLocation('');
+    setAutoLocation('');
+    setSelectedImages([]);
   };
 
   return (
@@ -163,10 +266,7 @@ const NewReport = () => {
                   
                   <div>
                     <Label htmlFor="emergency-category">Category *</Label>
-                    <Select value={categoryId} onValueChange={(value) => {
-                      setCategoryId(value);
-                      setSubcategoryId('');
-                    }}>
+                    <Select value={categoryId} onValueChange={setCategoryId}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select emergency category" />
                       </SelectTrigger>
@@ -180,34 +280,6 @@ const NewReport = () => {
                     </Select>
                   </div>
                   
-                  {subcategories.length > 0 && (
-                    <div>
-                      <Label htmlFor="emergency-subcategory">Subcategory *</Label>
-                      <Select value={subcategoryId} onValueChange={setSubcategoryId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select subcategory" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {subcategories.map((subcategory: any) => (
-                            <SelectItem key={subcategory.id} value={subcategory.id}>
-                              {subcategory.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  
-                  <div>
-                    <Label htmlFor="emergency-location">Location</Label>
-                    <Input
-                      id="emergency-location"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      placeholder="Street address or landmark"
-                    />
-                  </div>
-                  
                   <div>
                     <Label htmlFor="emergency-description">Description *</Label>
                     <Textarea
@@ -217,6 +289,69 @@ const NewReport = () => {
                       placeholder="Provide detailed information about the emergency"
                       rows={4}
                     />
+                  </div>
+                  
+                  <div>
+                    <Label>Location</Label>
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={getCurrentLocation}
+                          disabled={locationLoading}
+                          className="flex items-center gap-2"
+                        >
+                          <MapPin className="h-4 w-4" />
+                          {locationLoading ? 'Getting location...' : 'Get Current Location'}
+                        </Button>
+                      </div>
+                      {autoLocation && (
+                        <div className="p-2 bg-green-50 border border-green-200 rounded text-sm">
+                          <strong>Detected:</strong> {autoLocation}
+                        </div>
+                      )}
+                      <Input
+                        value={manualLocation}
+                        onChange={(e) => setManualLocation(e.target.value)}
+                        placeholder="Or enter location manually (optional)"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label>Photos (up to 5)</Label>
+                    <div className="space-y-2">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleImageSelect}
+                        className="cursor-pointer"
+                      />
+                      {selectedImages.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2">
+                          {selectedImages.map((image, index) => (
+                            <div key={index} className="relative">
+                              <img
+                                src={URL.createObjectURL(image)}
+                                alt={`Preview ${index + 1}`}
+                                className="w-full h-24 object-cover rounded border"
+                              />
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="absolute top-1 right-1 h-6 w-6 p-0"
+                                onClick={() => removeImage(index)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <Button 
@@ -279,16 +414,6 @@ const NewReport = () => {
                   )}
                   
                   <div>
-                    <Label htmlFor="non-emergency-location">Location</Label>
-                    <Input
-                      id="non-emergency-location"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      placeholder="Street address or landmark"
-                    />
-                  </div>
-                  
-                  <div>
                     <Label htmlFor="non-emergency-description">Description *</Label>
                     <Textarea
                       id="non-emergency-description"
@@ -297,6 +422,69 @@ const NewReport = () => {
                       placeholder="Provide detailed information about the issue"
                       rows={4}
                     />
+                  </div>
+                  
+                  <div>
+                    <Label>Location</Label>
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={getCurrentLocation}
+                          disabled={locationLoading}
+                          className="flex items-center gap-2"
+                        >
+                          <MapPin className="h-4 w-4" />
+                          {locationLoading ? 'Getting location...' : 'Get Current Location'}
+                        </Button>
+                      </div>
+                      {autoLocation && (
+                        <div className="p-2 bg-green-50 border border-green-200 rounded text-sm">
+                          <strong>Detected:</strong> {autoLocation}
+                        </div>
+                      )}
+                      <Input
+                        value={manualLocation}
+                        onChange={(e) => setManualLocation(e.target.value)}
+                        placeholder="Or enter location manually (optional)"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label>Photos (up to 5)</Label>
+                    <div className="space-y-2">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleImageSelect}
+                        className="cursor-pointer"
+                      />
+                      {selectedImages.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2">
+                          {selectedImages.map((image, index) => (
+                            <div key={index} className="relative">
+                              <img
+                                src={URL.createObjectURL(image)}
+                                alt={`Preview ${index + 1}`}
+                                className="w-full h-24 object-cover rounded border"
+                              />
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="absolute top-1 right-1 h-6 w-6 p-0"
+                                onClick={() => removeImage(index)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <Button 
