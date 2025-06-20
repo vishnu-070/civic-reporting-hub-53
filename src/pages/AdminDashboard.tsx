@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { BarChart3, Users, AlertTriangle, CheckCircle } from 'lucide-react';
+import { BarChart3, Users, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 
 const AdminDashboard = () => {
   const { data: reports = [], refetch } = useQuery({
@@ -39,6 +39,11 @@ const AdminDashboard = () => {
         .from('reports')
         .select('*', { count: 'exact' })
         .eq('status', 'pending');
+
+      const { data: resolvedReports } = await supabase
+        .from('reports')
+        .select('*', { count: 'exact' })
+        .eq('status', 'resolved');
       
       const { data: emergencyReports } = await supabase
         .from('reports')
@@ -48,6 +53,7 @@ const AdminDashboard = () => {
       return {
         total: totalReports?.length || 0,
         pending: pendingReports?.length || 0,
+        resolved: resolvedReports?.length || 0,
         emergency: emergencyReports?.length || 0
       };
     }
@@ -56,7 +62,10 @@ const AdminDashboard = () => {
   const updateReportStatus = async (reportId: string, status: string) => {
     await supabase
       .from('reports')
-      .update({ status })
+      .update({ 
+        status,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', reportId);
     
     refetch();
@@ -75,10 +84,22 @@ const AdminDashboard = () => {
     }
   };
 
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
   return (
     <Layout title="Admin Dashboard">
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Reports</CardTitle>
@@ -92,20 +113,30 @@ const AdminDashboard = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending Reports</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+              <AlertTriangle className="h-4 w-4 text-yellow-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.pending || 0}</div>
+              <div className="text-2xl font-bold text-yellow-600">{stats?.pending || 0}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Resolved Reports</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{stats?.resolved || 0}</div>
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Emergency Reports</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <Users className="h-4 w-4 text-red-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.emergency || 0}</div>
+              <div className="text-2xl font-bold text-red-600">{stats?.emergency || 0}</div>
             </CardContent>
           </Card>
         </div>
@@ -113,21 +144,35 @@ const AdminDashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle>Recent Reports</CardTitle>
-            <CardDescription>Manage and respond to citizen reports</CardDescription>
+            <CardDescription>Manage and respond to citizen reports with timestamps</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {reports.map((report: any) => (
                 <div key={report.id} className="border rounded-lg p-4 space-y-3">
                   <div className="flex justify-between items-start">
-                    <div>
+                    <div className="flex-1">
                       <h4 className="font-semibold">{report.title}</h4>
-                      <p className="text-sm text-gray-600">{report.description}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Reported by: {report.users?.name} | {report.categories?.name} - {report.subcategories?.name}
-                      </p>
+                      <p className="text-sm text-gray-600 mt-1">{report.description}</p>
+                      <div className="flex flex-col gap-1 mt-2">
+                        <p className="text-xs text-gray-500">
+                          Reported by: {report.users?.name} | {report.categories?.name} - {report.subcategories?.name}
+                        </p>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            <span>Created: {formatDateTime(report.created_at)}</span>
+                          </div>
+                          {report.updated_at !== report.created_at && (
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              <span>Updated: {formatDateTime(report.updated_at)}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 ml-4">
                       {report.type === 'emergency' && (
                         <Badge variant="destructive">Emergency</Badge>
                       )}
