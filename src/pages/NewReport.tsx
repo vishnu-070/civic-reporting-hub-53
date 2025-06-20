@@ -126,14 +126,14 @@ const NewReport = () => {
 
       console.log('Submitting report with image URLs:', imageUrls);
 
-      // Create report payload without user_id (let it be null for now)
+      // Create report payload and convert empty strings to null for UUID fields
       const reportPayload = {
-        title: reportData.title,
-        description: reportData.description,
+        title: reportData.title.trim(),
+        description: reportData.description.trim(),
         type: reportData.type,
         category_id: reportData.category_id || null,
         subcategory_id: reportData.subcategory_id || null,
-        location_address: reportData.location_address || null,
+        location_address: reportData.location_address.trim() || null,
         location_lat: reportData.location_lat,
         location_lng: reportData.location_lng,
         image_url: imageUrls.length > 0 ? imageUrls.join(',') : null,
