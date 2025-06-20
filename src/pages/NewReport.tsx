@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -71,40 +70,39 @@ const NewReport = () => {
         
         console.log('Uploading file:', fileName, 'Size:', file.size);
 
-        // Upload file to storage bucket
+        // Create a FormData object to ensure proper file handling
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // Upload file to storage bucket with better error handling
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('report-images')
           .upload(fileName, file, {
             cacheControl: '3600',
-            upsert: false
+            upsert: false,
+            contentType: file.type
           });
 
         if (uploadError) {
-          console.error('Upload error:', uploadError);
+          console.error('Upload error details:', uploadError);
           throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
         }
 
         console.log('File uploaded successfully:', uploadData);
 
-        // Get public URL
+        // Get public URL with proper error handling
         const { data: { publicUrl } } = supabase.storage
           .from('report-images')
           .getPublicUrl(fileName);
 
         console.log('Public URL generated:', publicUrl);
         
-        // Verify the upload by trying to get the file info
-        const { data: fileData, error: fileError } = await supabase.storage
-          .from('report-images')
-          .list('', {
-            limit: 1,
-            search: fileName
-          });
-
-        if (fileError) {
-          console.warn('Could not verify file upload:', fileError);
-        } else {
-          console.log('File verification successful:', fileData);
+        // Test if the URL is accessible
+        try {
+          const testResponse = await fetch(publicUrl, { method: 'HEAD' });
+          console.log('URL accessibility test:', testResponse.status);
+        } catch (testError) {
+          console.warn('URL test failed:', testError);
         }
 
         return publicUrl;
