@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -13,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { AlertTriangle, Phone, MapPin, Upload, X } from 'lucide-react';
+import { AlertTriangle, Phone, MapPin, Upload, X, Camera } from 'lucide-react';
 
 const NewReport = () => {
   const { user } = useAuth();
@@ -28,6 +27,10 @@ const NewReport = () => {
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const { data: emergencyCategories = [] } = useQuery({
     queryKey: ['emergency-categories'],
@@ -52,6 +55,81 @@ const NewReport = () => {
       return data || [];
     }
   });
+
+  const startCamera = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } // Use back camera by default
+      });
+      setStream(mediaStream);
+      setShowCamera(true);
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      toast({
+        title: "Camera access denied",
+        description: "Please enable camera access to take photos.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setShowCamera(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      const context = canvas.getContext('2d');
+      
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      if (context) {
+        context.drawImage(video, 0, 0);
+        
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
+            
+            if (selectedImages.length >= 5) {
+              toast({
+                title: "Too many images",
+                description: "You can upload up to 5 images only.",
+                variant: "destructive"
+              });
+              return;
+            }
+            
+            setSelectedImages(prev => [...prev, file]);
+            stopCamera();
+            
+            toast({
+              title: "Photo captured!",
+              description: "Photo has been added to your report."
+            });
+          }
+        }, 'image/jpeg', 0.9);
+      }
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [stream]);
 
   const getCurrentLocation = () => {
     setLocationLoading(true);
@@ -195,6 +273,86 @@ const NewReport = () => {
     setSelectedImages([]);
   };
 
+  const renderPhotoSection = () => (
+    <div>
+      <Label>Photos (up to 5)</Label>
+      <div className="space-y-3">
+        <div className="flex gap-2">
+          <Input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageSelect}
+            className="cursor-pointer flex-1"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={startCamera}
+            className="flex items-center gap-2 px-4"
+          >
+            <Camera className="h-4 w-4" />
+            Camera
+          </Button>
+        </div>
+        
+        {showCamera && (
+          <div className="space-y-3">
+            <div className="relative bg-black rounded-lg overflow-hidden">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                className="w-full max-h-64 object-cover"
+              />
+              <canvas ref={canvasRef} className="hidden" />
+            </div>
+            <div className="flex gap-2 justify-center">
+              <Button
+                type="button"
+                onClick={capturePhoto}
+                className="flex items-center gap-2"
+              >
+                <Camera className="h-4 w-4" />
+                Take Photo
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={stopCamera}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+        
+        {selectedImages.length > 0 && (
+          <div className="grid grid-cols-2 gap-2">
+            {selectedImages.map((image, index) => (
+              <div key={index} className="relative">
+                <img
+                  src={URL.createObjectURL(image)}
+                  alt={`Preview ${index + 1}`}
+                  className="w-full h-24 object-cover rounded border"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="absolute top-1 right-1 h-6 w-6 p-0"
+                  onClick={() => removeImage(index)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <Layout title="New Report" showBack={true}>
       <div className="max-w-2xl mx-auto">
@@ -294,40 +452,7 @@ const NewReport = () => {
                     </div>
                   </div>
                   
-                  <div>
-                    <Label>Photos (up to 5)</Label>
-                    <div className="space-y-2">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handleImageSelect}
-                        className="cursor-pointer"
-                      />
-                      {selectedImages.length > 0 && (
-                        <div className="grid grid-cols-2 gap-2">
-                          {selectedImages.map((image, index) => (
-                            <div key={index} className="relative">
-                              <img
-                                src={URL.createObjectURL(image)}
-                                alt={`Preview ${index + 1}`}
-                                className="w-full h-24 object-cover rounded border"
-                              />
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                className="absolute top-1 right-1 h-6 w-6 p-0"
-                                onClick={() => removeImage(index)}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  {renderPhotoSection()}
                   
                   <Button 
                     onClick={() => submitReport('emergency')} 
@@ -406,40 +531,7 @@ const NewReport = () => {
                     </div>
                   </div>
                   
-                  <div>
-                    <Label>Photos (up to 5)</Label>
-                    <div className="space-y-2">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handleImageSelect}
-                        className="cursor-pointer"
-                      />
-                      {selectedImages.length > 0 && (
-                        <div className="grid grid-cols-2 gap-2">
-                          {selectedImages.map((image, index) => (
-                            <div key={index} className="relative">
-                              <img
-                                src={URL.createObjectURL(image)}
-                                alt={`Preview ${index + 1}`}
-                                className="w-full h-24 object-cover rounded border"
-                              />
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                className="absolute top-1 right-1 h-6 w-6 p-0"
-                                onClick={() => removeImage(index)}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  {renderPhotoSection()}
                   
                   <Button 
                     onClick={() => submitReport('non_emergency')} 
