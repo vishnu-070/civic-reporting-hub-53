@@ -4,57 +4,75 @@ import { useNavigate } from 'react-router-dom';
 import Joyride from 'react-joyride';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import Layout from '@/components/Layout';
-import { FileText, Plus, BarChart3, AlertTriangle, Bell, CheckCircle, Zap, Shield } from 'lucide-react';
+import { FileText, Plus, BarChart3, AlertTriangle, MapPin, Calendar, CheckCircle2, Clock, User } from 'lucide-react';
 
 const CitizenDashboard = () => {
   const navigate = useNavigate();
   const [runTour, setRunTour] = useState(false);
 
-  // Dummy recent updates data
-  const recentUpdates = [
+  // Dummy recently resolved reports data
+  const recentlyResolvedReports = [
     {
       id: 1,
-      title: "New Emergency Report Categories Added",
-      description: "We've added Aviation, Fire, and Electricity as dedicated emergency categories for faster response times.",
-      date: "2 hours ago",
-      type: "feature",
-      icon: Zap
+      title: "Broken Street Light on Main Street",
+      category: "Infrastructure",
+      type: "non_emergency",
+      location: "Main Street & 5th Avenue",
+      resolvedDate: "2 hours ago",
+      resolvedBy: "Officer Martinez",
+      description: "Street light has been repaired and is now functioning properly.",
+      priority: "medium"
     },
     {
       id: 2,
-      title: "System Performance Improvements",
-      description: "Report submission is now 40% faster with our latest backend optimizations.",
-      date: "1 day ago",
-      type: "improvement",
-      icon: CheckCircle
+      title: "Power Line Down",
+      category: "Electricity",
+      type: "emergency",
+      location: "Oak Park residential area",
+      resolvedDate: "6 hours ago",
+      resolvedBy: "Emergency Response Team",
+      description: "Power line safely removed and electricity restored to affected homes.",
+      priority: "high"
     },
     {
       id: 3,
-      title: "Enhanced Security Features",
-      description: "Added two-factor authentication and improved data encryption for better account security.",
-      date: "3 days ago",
-      type: "security",
-      icon: Shield
+      title: "Pothole on Highway 101",
+      category: "Transportation",
+      type: "non_emergency",
+      location: "Highway 101, Mile Marker 23",
+      resolvedDate: "1 day ago",
+      resolvedBy: "Public Works Dept.",
+      description: "Pothole has been filled and road surface restored.",
+      priority: "low"
     },
     {
       id: 4,
-      title: "Mobile App Update Available",
-      description: "Version 2.1 is now available with improved navigation and offline report drafting.",
-      date: "1 week ago",
-      type: "update",
-      icon: Bell
+      title: "Small Kitchen Fire",
+      category: "Fire",
+      type: "emergency",
+      location: "Elm Street Apartments",
+      resolvedDate: "2 days ago",
+      resolvedBy: "Fire Department",
+      description: "Fire extinguished quickly, no injuries reported. Kitchen ventilation repaired.",
+      priority: "high"
     }
   ];
 
-  const getUpdateTypeColor = (type: string) => {
-    switch (type) {
-      case 'feature': return 'text-blue-600 bg-blue-100';
-      case 'improvement': return 'text-green-600 bg-green-100';
-      case 'security': return 'text-purple-600 bg-purple-100';
-      case 'update': return 'text-orange-600 bg-orange-100';
-      default: return 'text-gray-600 bg-gray-100';
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'bg-red-100 text-red-800 border-red-200';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'low': return 'bg-green-100 text-green-800 border-green-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
+  };
+
+  const getTypeColor = (type: string) => {
+    return type === 'emergency' 
+      ? 'bg-red-100 text-red-800 border-red-200'
+      : 'bg-blue-100 text-blue-800 border-blue-200';
   };
 
   useEffect(() => {
@@ -164,44 +182,67 @@ const CitizenDashboard = () => {
           </Card>
         </div>
 
-        {/* Recent Updates Section */}
+        {/* Recently Resolved Reports Section */}
         <Card className="mt-8">
           <CardHeader>
             <CardTitle className="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-              <Bell className="h-5 w-5 mr-2 text-blue-600" />
-              Recent Updates
+              <CheckCircle2 className="h-5 w-5 mr-2 text-green-600" />
+              Recently Resolved Reports
             </CardTitle>
             <CardDescription>
-              Stay informed about the latest improvements and features
+              See the latest issues that have been successfully resolved in your community
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentUpdates.map((update) => {
-                const IconComponent = update.icon;
-                return (
-                  <div key={update.id} className="flex items-start space-x-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                    <div className={`p-2 rounded-full ${getUpdateTypeColor(update.type)}`}>
-                      <IconComponent className="h-4 w-4" />
-                    </div>
+              {recentlyResolvedReports.map((report) => (
+                <div key={report.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow bg-white dark:bg-gray-800">
+                  <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
-                      <h4 className="font-medium text-gray-900 dark:text-white mb-1">
-                        {update.title}
+                      <h4 className="font-semibold text-gray-900 dark:text-white text-lg mb-2">
+                        {report.title}
                       </h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
-                        {update.description}
-                      </p>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {update.date}
-                      </span>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        <Badge variant="outline" className={getTypeColor(report.type)}>
+                          {report.type === 'emergency' ? 'Emergency' : 'Non-Emergency'}
+                        </Badge>
+                        <Badge variant="outline" className={getPriorityColor(report.priority)}>
+                          {report.priority.charAt(0).toUpperCase() + report.priority.slice(1)} Priority
+                        </Badge>
+                        <Badge variant="secondary">
+                          {report.category}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center text-green-600 ml-4">
+                      <CheckCircle2 className="h-5 w-5" />
                     </div>
                   </div>
-                );
-              })}
+                  
+                  <p className="text-gray-700 dark:text-gray-300 mb-3 text-sm leading-relaxed">
+                    {report.description}
+                  </p>
+                  
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-1">
+                      <MapPin className="h-4 w-4" />
+                      <span>{report.location}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-4 w-4" />
+                      <span>Resolved {report.resolvedDate}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <User className="h-4 w-4" />
+                      <span>by {report.resolvedBy}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="mt-4 text-center">
-              <Button variant="outline" size="sm">
-                View All Updates
+            <div className="mt-6 text-center">
+              <Button variant="outline" size="sm" className="px-6">
+                View All Resolved Reports
               </Button>
             </div>
           </CardContent>
