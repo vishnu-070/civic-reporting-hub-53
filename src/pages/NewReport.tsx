@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -23,7 +24,6 @@ const NewReport = () => {
     description: '',
     type: 'non-emergency',
     category_id: '',
-    subcategory_id: '',
     location_address: '',
     location_lat: null as number | null,
     location_lng: null as number | null,
@@ -44,22 +44,6 @@ const NewReport = () => {
       if (error) throw error;
       return data || [];
     }
-  });
-
-  const { data: subcategories = [] } = useQuery({
-    queryKey: ['subcategories', formData.category_id],
-    queryFn: async () => {
-      if (!formData.category_id) return [];
-      const { data, error } = await supabase
-        .from('subcategories')
-        .select('*')
-        .eq('category_id', formData.category_id)
-        .order('name');
-      
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!formData.category_id
   });
 
   const uploadImages = async (files: File[]): Promise<string[]> => {
@@ -132,7 +116,6 @@ const NewReport = () => {
         description: reportData.description.trim(),
         type: reportData.type,
         category_id: reportData.category_id || null,
-        subcategory_id: reportData.subcategory_id || null,
         location_address: reportData.location_address.trim() || null,
         location_lat: reportData.location_lat,
         location_lng: reportData.location_lng,
@@ -344,50 +327,26 @@ const NewReport = () => {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category *</Label>
-                  <Select 
-                    value={formData.category_id} 
-                    onValueChange={(value) => setFormData(prev => ({ 
-                      ...prev, 
-                      category_id: value,
-                      subcategory_id: '' // Reset subcategory when category changes
-                    }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category: any) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {formData.category_id && (
-                  <div className="space-y-2">
-                    <Label htmlFor="subcategory">Subcategory</Label>
-                    <Select 
-                      value={formData.subcategory_id} 
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, subcategory_id: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select subcategory" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {subcategories.map((subcategory: any) => (
-                          <SelectItem key={subcategory.id} value={subcategory.id}>
-                            {subcategory.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+              <div className="space-y-2">
+                <Label htmlFor="category">Category *</Label>
+                <Select 
+                  value={formData.category_id} 
+                  onValueChange={(value) => setFormData(prev => ({ 
+                    ...prev, 
+                    category_id: value
+                  }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category: any) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-4">
