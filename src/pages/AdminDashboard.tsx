@@ -9,8 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { BarChart3, AlertTriangle, CheckCircle, Clock, Filter } from 'lucide-react';
+import { BarChart3, AlertTriangle, CheckCircle, Clock, Filter, Image, Eye } from 'lucide-react';
 
 const AdminDashboard = () => {
   const [emergencyFilter, setEmergencyFilter] = useState<string>('all');
@@ -133,6 +134,53 @@ const AdminDashboard = () => {
     return applyFilters(filteredReports);
   };
 
+  const renderImages = (imageUrl: string | null) => {
+    if (!imageUrl) return null;
+
+    const imageUrls = imageUrl.split(',').filter(url => url.trim());
+    
+    if (imageUrls.length === 0) return null;
+
+    return (
+      <div className="mt-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Image className="h-4 w-4" />
+          <span className="text-sm font-medium">Images ({imageUrls.length})</span>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {imageUrls.map((url, index) => (
+            <Dialog key={index}>
+              <DialogTrigger asChild>
+                <div className="relative cursor-pointer group">
+                  <img
+                    src={url}
+                    alt={`Report image ${index + 1}`}
+                    className="w-16 h-16 object-cover rounded border hover:opacity-80 transition-opacity"
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded flex items-center justify-center">
+                    <Eye className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </div>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                  <DialogTitle>Report Image {index + 1}</DialogTitle>
+                </DialogHeader>
+                <div className="flex justify-center">
+                  <img
+                    src={url}
+                    alt={`Report image ${index + 1}`}
+                    className="max-w-full max-h-[70vh] object-contain rounded"
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   const renderFilters = () => (
     <div className="flex flex-col sm:flex-row gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
       <div className="flex items-center gap-2">
@@ -211,6 +259,7 @@ const AdminDashboard = () => {
                     )}
                   </div>
                 </div>
+                {renderImages(report.image_url)}
               </div>
               <div className="flex items-center gap-2 ml-4">
                 {report.type === 'emergency' && (
