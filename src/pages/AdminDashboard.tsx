@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Layout from '@/components/Layout';
@@ -32,6 +31,7 @@ const AdminDashboard = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
+      console.log('Fetched reports:', data);
       return data || [];
     }
   });
@@ -135,11 +135,21 @@ const AdminDashboard = () => {
   };
 
   const renderImages = (imageUrl: string | null) => {
-    if (!imageUrl) return null;
-
-    const imageUrls = imageUrl.split(',').filter(url => url.trim());
+    console.log('Rendering images for URL:', imageUrl);
     
-    if (imageUrls.length === 0) return null;
+    if (!imageUrl) {
+      console.log('No image URL provided');
+      return null;
+    }
+
+    const imageUrls = imageUrl.split(',').map(url => url.trim()).filter(url => url);
+    
+    if (imageUrls.length === 0) {
+      console.log('No valid image URLs found after processing');
+      return null;
+    }
+
+    console.log('Processing image URLs:', imageUrls);
 
     return (
       <div className="mt-3">
@@ -156,6 +166,11 @@ const AdminDashboard = () => {
                     src={url}
                     alt={`Report image ${index + 1}`}
                     className="w-16 h-16 object-cover rounded border hover:opacity-80 transition-opacity"
+                    onLoad={() => console.log(`Image ${index + 1} loaded successfully`)}
+                    onError={(e) => {
+                      console.error(`Error loading image ${index + 1}:`, url);
+                      console.error('Image error event:', e);
+                    }}
                   />
                   <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded flex items-center justify-center">
                     <Eye className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -171,6 +186,11 @@ const AdminDashboard = () => {
                     src={url}
                     alt={`Report image ${index + 1}`}
                     className="max-w-full max-h-[70vh] object-contain rounded"
+                    onLoad={() => console.log(`Modal image ${index + 1} loaded successfully`)}
+                    onError={(e) => {
+                      console.error(`Error loading modal image ${index + 1}:`, url);
+                      console.error('Modal image error event:', e);
+                    }}
                   />
                 </div>
               </DialogContent>
@@ -244,7 +264,7 @@ const AdminDashboard = () => {
                 <p className="text-sm text-gray-600 mt-1">{report.description}</p>
                 <div className="flex flex-col gap-1 mt-2">
                   <p className="text-xs text-gray-500">
-                    Reported by: {report.users?.name} | {report.categories?.name} - {report.subcategories?.name}
+                    Reported by: {report.users?.name || 'Unknown'} | {report.categories?.name} - {report.subcategories?.name}
                   </p>
                   <div className="flex items-center gap-4 text-xs text-gray-500">
                     <div className="flex items-center gap-1">
