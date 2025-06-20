@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -254,6 +255,21 @@ const NewReport = () => {
 
   return (
     <Layout title="Submit New Report">
+      <style>
+        {`
+          input[type="file"][capture]::-webkit-file-upload-button {
+            transform: scaleX(-1);
+          }
+          
+          video {
+            transform: scaleX(-1);
+          }
+          
+          .camera-preview {
+            transform: scaleX(-1);
+          }
+        `}
+      </style>
       <div className="max-w-2xl mx-auto">
         <Card>
           <CardHeader>
@@ -404,6 +420,7 @@ const NewReport = () => {
                         input.type = 'file';
                         input.accept = 'image/*';
                         input.capture = 'environment';
+                        input.style.transform = 'scaleX(-1)';
                         input.onchange = (e) => handleImageSelect(e as any);
                         input.click();
                       }}
