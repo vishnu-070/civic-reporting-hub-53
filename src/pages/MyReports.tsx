@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { FileText, Calendar, MapPin, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import VoiceRecorder from '@/components/VoiceRecorder';
 
 const MyReports = () => {
@@ -20,29 +20,32 @@ const MyReports = () => {
   const navigate = useNavigate();
   const [expandedReports, setExpandedReports] = useState<Set<string>>(new Set());
 
-  const { data: reports = [], isLoading } = useQuery({
-    queryKey: ['my-reports', user?.id],
+  const { data: reports = [], isLoading, refetch } = useQuery({
+    queryKey: ['my-reports', user?.email],
     queryFn: async () => {
-      if (!user?.id) {
-        console.log('No user ID available');
+      if (!user?.email) {
+        console.log('No user email available');
         return [];
       }
 
-      console.log('Fetching reports for user ID:', user.id);
+      console.log('Fetching reports for user email:', user.email);
       
-      // Query reports table using user_id from the users table
+      // First get the user ID from the users table using email
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id')
-        .eq('id', user.id)
+        .select('id, email, name')
+        .eq('email', user.email)
         .single();
 
       if (userError) {
-        console.error('Error fetching user:', userError);
+        console.error('Error fetching user data:', userError);
         return [];
       }
 
-      const { data, error } = await supabase
+      console.log('Found user data:', userData);
+
+      // Then fetch reports for this user
+      const { data: reportsData, error: reportsError } = await supabase
         .from('reports')
         .select(`
           *,
@@ -52,16 +55,41 @@ const MyReports = () => {
         .eq('user_id', userData.id)
         .order('created_at', { ascending: false });
       
-      if (error) {
-        console.error('Error fetching user reports:', error);
-        throw error;
+      if (reportsError) {
+        console.error('Error fetching user reports:', reportsError);
+        throw reportsError;
       }
       
-      console.log('Fetched user reports:', data);
-      return data || [];
+      console.log('Fetched user reports:', reportsData);
+      return reportsData || [];
     },
-    enabled: !!user?.id
+    enabled: !!user?.email
   });
+
+  // Set up real-time subscription for user's reports
+  useEffect(() => {
+    if (!user?.email) return;
+
+    const channel = supabase
+      .channel('user-reports-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reports'
+        },
+        (payload) => {
+          console.log('Real-time update received for reports:', payload);
+          refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.email, refetch]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -93,7 +121,6 @@ const MyReports = () => {
   };
 
   const handleVoiceToText = (reportId: string, text: string) => {
-    // In a real app, you would update the report description here
     console.log('Voice converted to text for report:', reportId, text);
   };
 
@@ -119,7 +146,7 @@ const MyReports = () => {
           </p>
         </div>
 
-        {!user?.id ? (
+        {!user?.email ? (
           <Card>
             <CardContent className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -150,7 +177,7 @@ const MyReports = () => {
         ) : (
           <div className="space-y-4">
             <div className="text-sm text-gray-500 mb-4">
-              {t('showingReports')} {reports.length} {reports.length !== 1 ? t('reports') : t('report')} {t('for')} {user.name}
+              {t('showingReports')} {reports.length} {reports.length !== 1 ? t('reports') : t('report')} {t('for')} {user.name || user.email}
             </div>
             {reports.map((report: any) => (
               <Card key={report.id} className="hover:shadow-md transition-shadow">

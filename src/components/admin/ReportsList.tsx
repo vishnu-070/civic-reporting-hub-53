@@ -1,7 +1,5 @@
 
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Clock, User, Tag, MapPin } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,19 +13,6 @@ interface ReportsListProps {
 }
 
 const ReportsList = ({ reports, onStatusUpdate }: ReportsListProps) => {
-  const { data: officers = [], refetch: refetchOfficers } = useQuery({
-    queryKey: ['officers'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('officers')
-        .select('*')
-        .order('name');
-      
-      if (error) throw error;
-      return data || [];
-    }
-  });
-
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString('en-US', {
@@ -56,7 +41,6 @@ const ReportsList = ({ reports, onStatusUpdate }: ReportsListProps) => {
       }
       
       console.log('Officer assigned successfully');
-      // The parent component will handle refetching via real-time subscription
     } catch (error) {
       console.error('Failed to assign officer:', error);
     }
@@ -135,40 +119,26 @@ const ReportsList = ({ reports, onStatusUpdate }: ReportsListProps) => {
 
             <ReportImages imageUrl={report.image_url} />
 
-            {/* Officer Assignment Section */}
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-between">
+            {/* Current Officer Assignment Display */}
+            {report.officers?.name && (
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700">Assigned Officer:</span>
-                  <span className="text-sm text-gray-600">
-                    {report.officers?.name || 'Not assigned'}
+                  <User className="h-4 w-4 text-blue-500" />
+                  <span className="text-sm font-medium text-blue-700">
+                    Assigned Officer: {report.officers.name} ({report.officers.department || 'N/A'})
                   </span>
                 </div>
-                <Select
-                  value={report.assigned_officer_id || 'unassigned'}
-                  onValueChange={(value) => handleOfficerAssignment(report.id, value)}
-                >
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Assign officer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unassigned">Unassign</SelectItem>
-                    {officers.map((officer: any) => (
-                      <SelectItem key={officer.id} value={officer.id}>
-                        {officer.name} ({officer.department})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
-            </div>
+            )}
           </div>
           
           <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
             <ReportActions 
               status={report.status}
+              reportId={report.id}
+              assignedOfficerId={report.assigned_officer_id}
               onStatusUpdate={(status) => onStatusUpdate(report.id, status)}
+              onOfficerAssign={(officerId) => handleOfficerAssignment(report.id, officerId)}
             />
           </div>
         </div>
