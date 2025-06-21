@@ -8,9 +8,10 @@ import { supabase } from '@/integrations/supabase/client';
 import DashboardStats from '@/components/admin/DashboardStats';
 import ReportFilters from '@/components/admin/ReportFilters';
 import ReportsList from '@/components/admin/ReportsList';
+import SystemOverviewPanel from '@/components/admin/SystemOverviewPanel';
 
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState('total');
+  const [activeTab, setActiveTab] = useState('overview');
   const [emergencyFilter, setEmergencyFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
@@ -174,6 +175,18 @@ const AdminDashboard = () => {
     <Layout title="Admin Dashboard">
       <div className="space-y-6">
         <DashboardStats defaultValue={activeTab} onValueChange={setActiveTab}>
+          <TabsContent value="overview" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>System Overview</CardTitle>
+                <CardDescription>Comprehensive dashboard with real-time system metrics and insights</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SystemOverviewPanel />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="total" className="mt-6">
             <Card>
               <CardHeader>

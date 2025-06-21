@@ -64,22 +64,48 @@ const AIBot: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyBlScnsGfLqc9OpGwOu2RJCYe7Agg71h60', {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
+          'Authorization': 'Bearer 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',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `You are a helpful assistant for RTIRS (Real-Time Incident Report System) - a government platform for reporting incidents in Telangana, India. Answer questions about reporting incidents, checking status, emergency procedures, and general platform help. Keep responses concise and helpful. User question: ${text}`
-            }]
-          }]
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `You are an RTIRS (Real-Time Incident Report System) admin assistant for Telangana State Government, India. You help citizens with:
+
+1. Reporting incidents and emergencies
+2. Checking report status
+3. Understanding the reporting process
+4. Emergency contact information
+5. General platform guidance
+
+Guidelines:
+- Be professional, helpful, and empathetic
+- Keep responses concise (under 150 words)
+- For contact details, provide: Telangana RTIRS Helpline: 1800-425-0425 (24/7 available)
+- For emergencies, always recommend calling 100 (Police), 101 (Fire), 108 (Ambulance) first
+- Explain that RTIRS is for non-emergency incident reporting and tracking
+- Guide users through the reporting process step by step
+- Be supportive and reassuring
+
+Current context: You're assisting a citizen on the RTIRS platform.`
+            },
+            {
+              role: 'user',
+              content: text
+            }
+          ],
+          max_tokens: 200,
+          temperature: 0.7
         })
       });
 
       const data = await response.json();
-      const botResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || t('botError');
+      const botResponse = data.choices?.[0]?.message?.content || t('botError');
 
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -90,7 +116,7 @@ const AIBot: React.FC = () => {
 
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
-      console.error('Error calling Gemini API:', error);
+      console.error('Error calling OpenAI API:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: t('botError'),
