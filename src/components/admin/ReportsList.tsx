@@ -45,7 +45,7 @@ const ReportsList = ({ reports, onStatusUpdate }: ReportsListProps) => {
       const { error } = await supabase
         .from('reports')
         .update({ 
-          assigned_officer_id: officerId || null,
+          assigned_officer_id: officerId === 'unassigned' ? null : officerId,
           updated_at: new Date().toISOString()
         })
         .eq('id', reportId);
@@ -146,14 +146,14 @@ const ReportsList = ({ reports, onStatusUpdate }: ReportsListProps) => {
                   </span>
                 </div>
                 <Select
-                  value={report.assigned_officer_id || ''}
+                  value={report.assigned_officer_id || 'unassigned'}
                   onValueChange={(value) => handleOfficerAssignment(report.id, value)}
                 >
                   <SelectTrigger className="w-48">
                     <SelectValue placeholder="Assign officer" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Unassign</SelectItem>
+                    <SelectItem value="unassigned">Unassign</SelectItem>
                     {officers.map((officer: any) => (
                       <SelectItem key={officer.id} value={officer.id}>
                         {officer.name} ({officer.department})
