@@ -3,17 +3,27 @@ import { useQuery } from '@tanstack/react-query';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { FileText, Calendar, MapPin } from 'lucide-react';
+import { FileText, Calendar, MapPin, Plus } from 'lucide-react';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 const MyReports = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const { data: reports = [], isLoading } = useQuery({
     queryKey: ['my-reports', user?.id],
     queryFn: async () => {
+      if (!user?.id) {
+        console.log('No user ID available');
+        return [];
+      }
+
+      console.log('Fetching reports for user ID:', user.id);
+      
       const { data, error } = await supabase
         .from('reports')
         .select(`
@@ -21,10 +31,15 @@ const MyReports = () => {
           categories(name),
           officers(name)
         `)
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching user reports:', error);
+        throw error;
+      }
+      
+      console.log('Fetched user reports:', data);
       return data || [];
     },
     enabled: !!user?.id
@@ -71,20 +86,39 @@ const MyReports = () => {
           </p>
         </div>
 
-        {reports.length === 0 ? (
+        {!user?.id ? (
+          <Card>
+            <CardContent className="text-center py-12">
+              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                Please log in to view your reports
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300">
+                You need to be logged in to access your reports.
+              </p>
+            </CardContent>
+          </Card>
+        ) : reports.length === 0 ? (
           <Card>
             <CardContent className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                 No reports yet
               </h3>
-              <p className="text-gray-600 dark:text-gray-300">
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
                 You haven't submitted any reports. Create your first report to get started.
               </p>
+              <Button onClick={() => navigate('/new-report')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Report
+              </Button>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-4">
+            <div className="text-sm text-gray-500 mb-4">
+              Showing {reports.length} report{reports.length !== 1 ? 's' : ''} for {user.name}
+            </div>
             {reports.map((report: any) => (
               <Card key={report.id} className="hover:shadow-md transition-shadow">
                 <CardHeader>

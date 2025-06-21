@@ -27,7 +27,10 @@ const AdminDashboard = () => {
         `)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching reports:', error);
+        throw error;
+      }
       console.log('Fetched reports:', data);
       return data || [];
     }
@@ -94,31 +97,55 @@ const AdminDashboard = () => {
   const applyFilters = (reportsList: any[]) => {
     let filtered = reportsList;
 
+    console.log('Applying filters - Emergency filter:', emergencyFilter, 'Category filter:', categoryFilter);
+    console.log('Reports before filtering:', filtered.length);
+
     // Filter by emergency type
     if (emergencyFilter === 'emergency') {
-      filtered = filtered.filter(report => report.type === 'emergency');
+      filtered = filtered.filter(report => {
+        console.log('Report type:', report.type, 'Is emergency:', report.type === 'emergency');
+        return report.type === 'emergency';
+      });
     } else if (emergencyFilter === 'non-emergency') {
-      filtered = filtered.filter(report => report.type === 'non_emergency');
+      filtered = filtered.filter(report => {
+        console.log('Report type:', report.type, 'Is non-emergency:', report.type === 'non_emergency');
+        return report.type === 'non_emergency';
+      });
     }
+
+    console.log('Reports after emergency filter:', filtered.length);
 
     // Filter by category
     if (categoryFilter !== 'all') {
-      filtered = filtered.filter(report => report.category_id === categoryFilter);
+      filtered = filtered.filter(report => {
+        console.log('Report category_id:', report.category_id, 'Filter category:', categoryFilter);
+        return report.category_id === categoryFilter;
+      });
     }
 
+    console.log('Reports after category filter:', filtered.length);
     return filtered;
   };
 
   const filterReports = (status?: string) => {
     let filteredReports = reports;
     
+    console.log('Filtering reports by status:', status);
+    console.log('Total reports available:', reports.length);
+    
     // Apply status filter first
     if (status) {
-      filteredReports = filteredReports.filter((report: any) => report.status === status);
+      filteredReports = filteredReports.filter((report: any) => {
+        console.log('Report status:', report.status, 'Target status:', status, 'Match:', report.status === status);
+        return report.status === status;
+      });
+      console.log(`Reports with status "${status}":`, filteredReports.length);
     }
     
     // Then apply other filters
-    return applyFilters(filteredReports);
+    const finalFiltered = applyFilters(filteredReports);
+    console.log('Final filtered reports:', finalFiltered.length);
+    return finalFiltered;
   };
 
   if (isLoading) {
