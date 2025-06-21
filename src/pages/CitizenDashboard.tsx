@@ -1,69 +1,61 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import Joyride from 'react-joyride';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Layout from '@/components/Layout';
+import { supabase } from '@/integrations/supabase/client';
 import { FileText, Plus, BarChart3, AlertTriangle, MapPin, Calendar, CheckCircle2, Clock, User } from 'lucide-react';
 
 const CitizenDashboard = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [runTour, setRunTour] = useState(false);
 
-  // Dummy recently resolved reports data
-  const recentlyResolvedReports = [
-    {
-      id: 1,
-      title: "Broken Street Light on Main Street",
-      category: "Infrastructure",
-      type: "non_emergency",
-      location: "Main Street & 5th Avenue",
-      resolvedDate: "2 hours ago",
-      resolvedBy: "Officer Martinez",
-      description: "Street light has been repaired and is now functioning properly.",
-      priority: "medium"
-    },
-    {
-      id: 2,
-      title: "Power Line Down",
-      category: "Electricity",
-      type: "emergency",
-      location: "Oak Park residential area",
-      resolvedDate: "6 hours ago",
-      resolvedBy: "Emergency Response Team",
-      description: "Power line safely removed and electricity restored to affected homes.",
-      priority: "high"
-    },
-    {
-      id: 3,
-      title: "Pothole on Highway 101",
-      category: "Transportation",
-      type: "non_emergency",
-      location: "Highway 101, Mile Marker 23",
-      resolvedDate: "1 day ago",
-      resolvedBy: "Public Works Dept.",
-      description: "Pothole has been filled and road surface restored.",
-      priority: "low"
-    },
-    {
-      id: 4,
-      title: "Small Kitchen Fire",
-      category: "Fire",
-      type: "emergency",
-      location: "Elm Street Apartments",
-      resolvedDate: "2 days ago",
-      resolvedBy: "Fire Department",
-      description: "Fire extinguished quickly, no injuries reported. Kitchen ventilation repaired.",
-      priority: "high"
+  // Fetch recently resolved reports from backend
+  const { data: recentlyResolvedReports = [] } = useQuery({
+    queryKey: ['recently-resolved-reports'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reports')
+        .select(`
+          *,
+          categories(name),
+          officers(name)
+        `)
+        .eq('status', 'resolved')
+        .order('updated_at', { ascending: false })
+        .limit(4);
+      
+      if (error) {
+        console.error('Error fetching resolved reports:', error);
+        throw error;
+      }
+      
+      return data || [];
     }
-  ];
+  });
 
   const getTypeColor = (type: string) => {
     return type === 'emergency' 
       ? 'bg-red-100 text-red-800 border-red-200'
       : 'bg-blue-100 text-blue-800 border-blue-200';
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return 'Less than 1 hour ago';
+    if (diffInHours < 24) return `${diffInHours} hours ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays === 1) return '1 day ago';
+    return `${diffInDays} days ago`;
   };
 
   useEffect(() => {
@@ -78,20 +70,20 @@ const CitizenDashboard = () => {
   const tourSteps = [
     {
       target: '.new-report-card',
-      content: 'Click here to create a new incident report. You can report both emergency and non-emergency issues.',
+      content: t('newReportDesc'),
     },
     {
       target: '.my-reports-card',
-      content: 'View all your submitted reports and track their status here.',
+      content: t('myReportsDesc'),
     },
     {
       target: '.system-overview-card',
-      content: 'Check system-wide statistics and see how the community is doing.',
+      content: t('systemOverviewDesc'),
     },
   ];
 
   return (
-    <Layout title="Citizen Dashboard">
+    <Layout title={t('citizenDashboard')}>
       <Joyride
         steps={tourSteps}
         run={runTour}
@@ -112,10 +104,10 @@ const CitizenDashboard = () => {
       <div className="space-y-6">
         <div className="text-center">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Welcome to Citizen Services
+            {t('welcome')}
           </h2>
           <p className="text-gray-600 dark:text-gray-300">
-            Report incidents and stay connected with your local government
+            {t('welcomeSubtitle')}
           </p>
         </div>
 
@@ -125,15 +117,15 @@ const CitizenDashboard = () => {
               <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
                 <Plus className="h-6 w-6 text-red-600" />
               </div>
-              <CardTitle className="text-red-700">New Report</CardTitle>
+              <CardTitle className="text-red-700">{t('newReport')}</CardTitle>
               <CardDescription>
-                Report emergencies or civic issues in your area
+                {t('newReportDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button className="w-full bg-red-600 hover:bg-red-700">
                 <AlertTriangle className="h-4 w-4 mr-2" />
-                Create Report
+                {t('createReport')}
               </Button>
             </CardContent>
           </Card>
@@ -143,14 +135,14 @@ const CitizenDashboard = () => {
               <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
                 <FileText className="h-6 w-6 text-blue-600" />
               </div>
-              <CardTitle className="text-blue-700">My Reports</CardTitle>
+              <CardTitle className="text-blue-700">{t('myReports')}</CardTitle>
               <CardDescription>
-                View and track your submitted reports
+                {t('myReportsDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button variant="outline" className="w-full">
-                View My Reports
+                {t('viewMyReports')}
               </Button>
             </CardContent>
           </Card>
@@ -160,34 +152,34 @@ const CitizenDashboard = () => {
               <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
                 <BarChart3 className="h-6 w-6 text-green-600" />
               </div>
-              <CardTitle className="text-green-700">System Overview</CardTitle>
+              <CardTitle className="text-green-700">{t('systemOverview')}</CardTitle>
               <CardDescription>
-                View community statistics and trends
+                {t('systemOverviewDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button variant="outline" className="w-full">
-                View Statistics
+                {t('viewStatistics')}
               </Button>
             </CardContent>
           </Card>
         </div>
 
-        {/* Recently Resolved Reports Section */}
+        {/* Recently Resolved Reports Section - Now Dynamic */}
         <div className="grid md:grid-cols-1 gap-6">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
                 <CheckCircle2 className="h-5 w-5 mr-2 text-green-600" />
-                Recently Resolved
+                {t('recentlyResolved')}
               </CardTitle>
               <CardDescription>
-                Latest issues resolved in your community
+                {t('recentlyResolvedDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {recentlyResolvedReports.slice(0, 3).map((report) => (
+                {recentlyResolvedReports.slice(0, 3).map((report: any) => (
                   <div key={report.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:shadow-sm transition-shadow bg-white dark:bg-gray-800">
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-medium text-sm truncate pr-2">
@@ -199,28 +191,43 @@ const CitizenDashboard = () => {
                     </div>
                     
                     <p className="text-xs text-gray-600 mb-2 line-clamp-2">
-                      {report.description}
+                      {report.resolution_details || report.description}
                     </p>
                     
                     <div className="flex items-center gap-3 text-xs text-gray-500">
                       <div className="flex items-center gap-1">
                         <MapPin className="h-3 w-3" />
-                        <span className="truncate max-w-20">{report.location.split(',')[0]}</span>
+                        <span className="truncate max-w-20">
+                          {report.location_address?.split(',')[0] || 'Location'}
+                        </span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        <span>{report.resolvedDate}</span>
+                        <span>{formatTimeAgo(report.updated_at)}</span>
                       </div>
                       <Badge variant="outline" className={getTypeColor(report.type) + " text-xs"}>
-                        {report.type === 'emergency' ? 'Emergency' : 'Non-Emergency'}
+                        {report.type === 'emergency' ? t('emergency') : t('nonEmergency')}
                       </Badge>
                     </div>
+                    
+                    {report.officers?.name && (
+                      <div className="mt-2 text-xs text-blue-600">
+                        <User className="h-3 w-3 inline mr-1" />
+                        {report.officers.name}
+                      </div>
+                    )}
                   </div>
                 ))}
+                
+                {recentlyResolvedReports.length === 0 && (
+                  <div className="text-center py-4 text-gray-500">
+                    No resolved reports to display
+                  </div>
+                )}
               </div>
               <div className="mt-4 text-center">
                 <Button variant="outline" size="sm" className="px-4">
-                  View All Resolved
+                  {t('viewAllResolved')}
                 </Button>
               </div>
             </CardContent>

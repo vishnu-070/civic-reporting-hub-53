@@ -4,6 +4,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Moon, Sun, LogOut, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from './LanguageSwitcher';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -14,6 +16,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, title, showBack = false }) => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -46,15 +49,30 @@ const Layout: React.FC<LayoutProps> = ({ children, title, showBack = false }) =>
                   Back
                 </Button>
               )}
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-                {title}
-              </h1>
+              
+              {/* Logo and Title Section */}
+              <div className="flex items-center space-x-3">
+                <img 
+                  src="https://upload.wikimedia.org/wikipedia/en/thumb/6/61/Emblem_of_Telangana.svg/1200px-Emblem_of_Telangana.svg.png" 
+                  alt="Telangana Government" 
+                  className="h-10 w-10"
+                />
+                <div className="flex flex-col">
+                  <div className="flex items-center space-x-2">
+                    <h1 className="text-xl font-bold text-blue-700 dark:text-blue-300">RTIRS</h1>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">|</span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{title}</span>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Real-Time Incident Report System</p>
+                </div>
+              </div>
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               <span className="text-sm text-gray-600 dark:text-gray-300">
                 Welcome, {user?.name}
               </span>
+              <LanguageSwitcher />
               <Button
                 variant="ghost"
                 size="sm"
