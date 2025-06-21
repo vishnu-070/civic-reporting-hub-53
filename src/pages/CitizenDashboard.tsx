@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Layout from '@/components/Layout';
+import CitizenReports from '@/components/CitizenReports';
 import { FileText, Plus, BarChart3, AlertTriangle, MapPin, Calendar, CheckCircle2, Clock, User } from 'lucide-react';
 
 const CitizenDashboard = () => {
@@ -182,71 +183,62 @@ const CitizenDashboard = () => {
           </Card>
         </div>
 
-        {/* Recently Resolved Reports Section */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-              <CheckCircle2 className="h-5 w-5 mr-2 text-green-600" />
-              Recently Resolved Reports
-            </CardTitle>
-            <CardDescription>
-              See the latest issues that have been successfully resolved in your community
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentlyResolvedReports.map((report) => (
-                <div key={report.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow bg-white dark:bg-gray-800">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 dark:text-white text-lg mb-2">
+        {/* My Reports Section */}
+        <div className="grid md:grid-cols-2 gap-6">
+          <CitizenReports />
+          
+          {/* Recently Resolved Reports Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+                <CheckCircle2 className="h-5 w-5 mr-2 text-green-600" />
+                Recently Resolved
+              </CardTitle>
+              <CardDescription>
+                Latest issues resolved in your community
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {recentlyResolvedReports.slice(0, 2).map((report) => (
+                  <div key={report.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:shadow-sm transition-shadow bg-white dark:bg-gray-800">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-medium text-sm truncate pr-2">
                         {report.title}
                       </h4>
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        <Badge variant="outline" className={getTypeColor(report.type)}>
-                          {report.type === 'emergency' ? 'Emergency' : 'Non-Emergency'}
-                        </Badge>
-                        <Badge variant="outline" className={getPriorityColor(report.priority)}>
-                          {report.priority.charAt(0).toUpperCase() + report.priority.slice(1)} Priority
-                        </Badge>
-                        <Badge variant="secondary">
-                          {report.category}
-                        </Badge>
+                      <div className="flex items-center text-green-600">
+                        <CheckCircle2 className="h-4 w-4" />
                       </div>
                     </div>
-                    <div className="flex items-center text-green-600 ml-4">
-                      <CheckCircle2 className="h-5 w-5" />
+                    
+                    <p className="text-xs text-gray-600 mb-2 line-clamp-2">
+                      {report.description}
+                    </p>
+                    
+                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        <span className="truncate max-w-20">{report.location.split(',')[0]}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span>{report.resolvedDate}</span>
+                      </div>
+                      <Badge variant="outline" className={getTypeColor(report.type) + " text-xs"}>
+                        {report.type === 'emergency' ? 'Emergency' : 'Non-Emergency'}
+                      </Badge>
                     </div>
                   </div>
-                  
-                  <p className="text-gray-700 dark:text-gray-300 mb-3 text-sm leading-relaxed">
-                    {report.description}
-                  </p>
-                  
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-                    <div className="flex items-center gap-1">
-                      <MapPin className="h-4 w-4" />
-                      <span>{report.location}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      <span>Resolved {report.resolvedDate}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <User className="h-4 w-4" />
-                      <span>by {report.resolvedBy}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 text-center">
-              <Button variant="outline" size="sm" className="px-6">
-                View All Resolved Reports
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </div>
+              <div className="mt-4 text-center">
+                <Button variant="outline" size="sm" className="px-4">
+                  View All Resolved
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </Layout>
   );

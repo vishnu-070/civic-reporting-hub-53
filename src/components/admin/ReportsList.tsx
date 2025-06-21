@@ -1,6 +1,10 @@
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Clock, User, Tag, MapPin } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import ReportImages from './ReportImages';
 import ReportStatusBadge from './ReportStatusBadge';
 import ReportActions from './ReportActions';
@@ -11,6 +15,19 @@ interface ReportsListProps {
 }
 
 const ReportsList = ({ reports, onStatusUpdate }: ReportsListProps) => {
+  const { data: officers = [] } = useQuery({
+    queryKey: ['officers'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('officers')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString('en-US', {
@@ -21,6 +38,19 @@ const ReportsList = ({ reports, onStatusUpdate }: ReportsListProps) => {
       minute: '2-digit',
       hour12: true
     });
+  };
+
+  const handleOfficerAssignment = async (reportId: string, officerId: string) => {
+    await supabase
+      .from('reports')
+      .update({ 
+        assigned_officer_id: officerId || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', reportId);
+    
+    // Trigger a refetch - we'll need to pass this from parent
+    window.location.reload(); // Simple solution for now
   };
 
   if (reports.length === 0) {
@@ -65,7 +95,7 @@ const ReportsList = ({ reports, onStatusUpdate }: ReportsListProps) => {
                 <Tag className="h-4 w-4 text-green-500" />
                 <span className="text-gray-600">Category:</span>
                 <span className="font-medium text-green-700">
-                  {report.categories?.name} - {report.subcategories?.name}
+                  {report.categories?.name || 'Uncategorized'}
                 </span>
               </div>
 
@@ -82,9 +112,48 @@ const ReportsList = ({ reports, onStatusUpdate }: ReportsListProps) => {
                   <span className="font-medium text-orange-700">{formatDateTime(report.updated_at)}</span>
                 </div>
               )}
+
+              {(report.location_address || (report.location_lat && report.location_lng)) && (
+                <div className="flex items-center gap-2 text-sm md:col-span-2 lg:col-span-1">
+                  <MapPin className="h-4 w-4 text-red-500" />
+                  <span className="text-gray-600">Location:</span>
+                  <span className="font-medium text-red-700">
+                    {report.location_address || `${report.location_lat?.toFixed(6)}, ${report.location_lng?.toFixed(6)}`}
+                  </span>
+                </div>
+              )}
             </div>
 
             <ReportImages imageUrl={report.image_url} />
+
+            {/* Officer Assignment Section */}
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-700">Assigned Officer:</span>
+                  <span className="text-sm text-gray-600">
+                    {report.officers?.name || 'Not assigned'}
+                  </span>
+                </div>
+                <Select
+                  value={report.assigned_officer_id || ''}
+                  onValueChange={(value) => handleOfficerAssignment(report.id, value)}
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Assign officer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Unassign</SelectItem>
+                    {officers.map((officer: any) => (
+                      <SelectItem key={officer.id} value={officer.id}>
+                        {officer.name} ({officer.department})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
           
           <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">

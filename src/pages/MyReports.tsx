@@ -19,7 +19,6 @@ const MyReports = () => {
         .select(`
           *,
           categories(name),
-          subcategories(name),
           officers(name)
         `)
         .eq('user_id', user?.id)
@@ -93,7 +92,7 @@ const MyReports = () => {
                     <div>
                       <CardTitle className="text-lg">{report.title}</CardTitle>
                       <CardDescription className="mt-1">
-                        {report.categories?.name} - {report.subcategories?.name}
+                        {report.categories?.name || 'Uncategorized'}
                       </CardDescription>
                     </div>
                     <div className="flex flex-col gap-2 items-end">
@@ -111,10 +110,10 @@ const MyReports = () => {
                       <Calendar className="h-4 w-4" />
                       {format(new Date(report.created_at), 'MMM dd, yyyy')}
                     </div>
-                    {report.location_address && (
+                    {(report.location_address || (report.location_lat && report.location_lng)) && (
                       <div className="flex items-center gap-1">
                         <MapPin className="h-4 w-4" />
-                        {report.location_address}
+                        {report.location_address || `${report.location_lat?.toFixed(6)}, ${report.location_lng?.toFixed(6)}`}
                       </div>
                     )}
                   </div>

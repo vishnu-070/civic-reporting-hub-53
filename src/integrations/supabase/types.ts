@@ -61,7 +61,6 @@ export type Database = {
           location_lng: number | null
           resolution_details: string | null
           status: string
-          subcategory_id: string | null
           title: string
           type: string
           updated_at: string
@@ -79,7 +78,6 @@ export type Database = {
           location_lng?: number | null
           resolution_details?: string | null
           status?: string
-          subcategory_id?: string | null
           title: string
           type: string
           updated_at?: string
@@ -97,7 +95,6 @@ export type Database = {
           location_lng?: number | null
           resolution_details?: string | null
           status?: string
-          subcategory_id?: string | null
           title?: string
           type?: string
           updated_at?: string
@@ -116,13 +113,6 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reports_subcategory_id_fkey"
-            columns: ["subcategory_id"]
-            isOneToOne: false
-            referencedRelation: "subcategories"
             referencedColumns: ["id"]
           },
           {
