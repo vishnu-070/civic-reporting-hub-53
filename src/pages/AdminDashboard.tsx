@@ -100,7 +100,7 @@ const AdminDashboard = () => {
     console.log('Applying filters - Emergency filter:', emergencyFilter, 'Category filter:', categoryFilter);
     console.log('Reports before filtering:', filtered.length);
 
-    // Filter by emergency type
+    // Filter by emergency type - FIXED: Check for correct values
     if (emergencyFilter === 'emergency') {
       filtered = filtered.filter(report => {
         console.log('Report type:', report.type, 'Is emergency:', report.type === 'emergency');
@@ -108,8 +108,10 @@ const AdminDashboard = () => {
       });
     } else if (emergencyFilter === 'non-emergency') {
       filtered = filtered.filter(report => {
-        console.log('Report type:', report.type, 'Is non-emergency:', report.type === 'non_emergency');
-        return report.type === 'non_emergency';
+        // FIXED: Check for both 'non_emergency' and 'non-emergency' to handle both cases
+        const isNonEmergency = report.type === 'non_emergency' || report.type === 'non-emergency';
+        console.log('Report type:', report.type, 'Is non-emergency:', isNonEmergency);
+        return isNonEmergency;
       });
     }
 
@@ -136,6 +138,12 @@ const AdminDashboard = () => {
     // Apply status filter first
     if (status) {
       filteredReports = filteredReports.filter((report: any) => {
+        // FIXED: Handle both 'pending' and 'in_progress' for pending section
+        if (status === 'pending') {
+          const isPending = report.status === 'pending' || report.status === 'in_progress';
+          console.log('Report status:', report.status, 'Is pending/in_progress:', isPending);
+          return isPending;
+        }
         console.log('Report status:', report.status, 'Target status:', status, 'Match:', report.status === status);
         return report.status === status;
       });
@@ -191,8 +199,8 @@ const AdminDashboard = () => {
           <TabsContent value="pending" className="mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Pending Reports ({filterReports('pending').length})</CardTitle>
-                <CardDescription>Reports waiting to be processed</CardDescription>
+                <CardTitle>Active Reports ({filterReports('pending').length})</CardTitle>
+                <CardDescription>Reports that are pending or currently being processed</CardDescription>
               </CardHeader>
               <CardContent>
                 <ReportFilters
