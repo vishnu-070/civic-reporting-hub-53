@@ -14,24 +14,24 @@ const DashboardStats = ({ defaultValue, onValueChange, children }: DashboardStat
   const { data: stats } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: async () => {
-      const { data: totalReports } = await supabase
+      // Get all reports
+      const { data: allReports, error: allError } = await supabase
         .from('reports')
-        .select('*', { count: 'exact' });
+        .select('status');
       
-      const { data: pendingReports } = await supabase
-        .from('reports')
-        .select('*', { count: 'exact' })
-        .eq('status', 'pending');
-
-      const { data: resolvedReports } = await supabase
-        .from('reports')
-        .select('*', { count: 'exact' })
-        .eq('status', 'resolved');
+      if (allError) throw allError;
+      
+      // Count by status
+      const total = allReports?.length || 0;
+      const pending = allReports?.filter(report => report.status === 'pending').length || 0;
+      const resolved = allReports?.filter(report => report.status === 'resolved').length || 0;
+      
+      console.log('Stats calculated:', { total, pending, resolved });
       
       return {
-        total: totalReports?.length || 0,
-        pending: pendingReports?.length || 0,
-        resolved: resolvedReports?.length || 0
+        total,
+        pending,
+        resolved
       };
     }
   });

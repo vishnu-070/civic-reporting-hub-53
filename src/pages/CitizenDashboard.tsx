@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Layout from '@/components/Layout';
-import CitizenReports from '@/components/CitizenReports';
 import { FileText, Plus, BarChart3, AlertTriangle, MapPin, Calendar, CheckCircle2, Clock, User } from 'lucide-react';
 
 const CitizenDashboard = () => {
@@ -174,11 +173,8 @@ const CitizenDashboard = () => {
           </Card>
         </div>
 
-        {/* My Reports and Recently Resolved Section */}
-        <div className="grid md:grid-cols-2 gap-6">
-          <CitizenReports />
-          
-          {/* Recently Resolved Reports Section */}
+        {/* Recently Resolved Reports Section */}
+        <div className="grid md:grid-cols-1 gap-6">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
@@ -191,7 +187,7 @@ const CitizenDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {recentlyResolvedReports.slice(0, 2).map((report) => (
+                {recentlyResolvedReports.slice(0, 3).map((report) => (
                   <div key={report.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:shadow-sm transition-shadow bg-white dark:bg-gray-800">
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-medium text-sm truncate pr-2">

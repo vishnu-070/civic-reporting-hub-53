@@ -98,7 +98,7 @@ const AdminDashboard = () => {
     if (emergencyFilter === 'emergency') {
       filtered = filtered.filter(report => report.type === 'emergency');
     } else if (emergencyFilter === 'non-emergency') {
-      filtered = filtered.filter(report => report.type !== 'emergency');
+      filtered = filtered.filter(report => report.type === 'non_emergency');
     }
 
     // Filter by category
@@ -110,7 +110,14 @@ const AdminDashboard = () => {
   };
 
   const filterReports = (status?: string) => {
-    let filteredReports = status ? reports.filter((report: any) => report.status === status) : reports;
+    let filteredReports = reports;
+    
+    // Apply status filter first
+    if (status) {
+      filteredReports = filteredReports.filter((report: any) => report.status === status);
+    }
+    
+    // Then apply other filters
     return applyFilters(filteredReports);
   };
 
@@ -123,6 +130,10 @@ const AdminDashboard = () => {
       </Layout>
     );
   }
+
+  console.log('All reports:', reports);
+  console.log('Pending reports:', filterReports('pending'));
+  console.log('Resolved reports:', filterReports('resolved'));
 
   return (
     <Layout title="Admin Dashboard">
