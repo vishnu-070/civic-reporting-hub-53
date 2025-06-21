@@ -15,7 +15,7 @@ interface ReportsListProps {
 }
 
 const ReportsList = ({ reports, onStatusUpdate }: ReportsListProps) => {
-  const { data: officers = [] } = useQuery({
+  const { data: officers = [], refetch: refetchOfficers } = useQuery({
     queryKey: ['officers'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -41,16 +41,25 @@ const ReportsList = ({ reports, onStatusUpdate }: ReportsListProps) => {
   };
 
   const handleOfficerAssignment = async (reportId: string, officerId: string) => {
-    await supabase
-      .from('reports')
-      .update({ 
-        assigned_officer_id: officerId || null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', reportId);
-    
-    // Trigger a refetch - we'll need to pass this from parent
-    window.location.reload(); // Simple solution for now
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .update({ 
+          assigned_officer_id: officerId || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reportId);
+      
+      if (error) {
+        console.error('Error assigning officer:', error);
+        throw error;
+      }
+      
+      console.log('Officer assigned successfully');
+      // The parent component will handle refetching via real-time subscription
+    } catch (error) {
+      console.error('Failed to assign officer:', error);
+    }
   };
 
   if (reports.length === 0) {

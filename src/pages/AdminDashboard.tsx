@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +14,7 @@ const AdminDashboard = () => {
   const [emergencyFilter, setEmergencyFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
-  const { data: reports = [], refetch } = useQuery({
+  const { data: reports = [], refetch, isLoading } = useQuery({
     queryKey: ['admin-reports'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -22,7 +23,6 @@ const AdminDashboard = () => {
           *,
           users(name),
           categories(name),
-          subcategories(name),
           officers(name)
         `)
         .order('created_at', { ascending: false });
@@ -46,16 +46,49 @@ const AdminDashboard = () => {
     }
   });
 
+  // Set up real-time subscription for reports
+  useEffect(() => {
+    const channel = supabase
+      .channel('reports-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reports'
+        },
+        (payload) => {
+          console.log('Real-time update received:', payload);
+          refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetch]);
+
   const updateReportStatus = async (reportId: string, status: string) => {
-    await supabase
-      .from('reports')
-      .update({ 
-        status,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', reportId);
-    
-    refetch();
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .update({ 
+          status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reportId);
+      
+      if (error) {
+        console.error('Error updating report status:', error);
+        throw error;
+      }
+      
+      console.log('Report status updated successfully');
+      // Refetch will be triggered by real-time subscription
+    } catch (error) {
+      console.error('Failed to update report status:', error);
+    }
   };
 
   const applyFilters = (reportsList: any[]) => {
@@ -81,6 +114,16 @@ const AdminDashboard = () => {
     return applyFilters(filteredReports);
   };
 
+  if (isLoading) {
+    return (
+      <Layout title="Admin Dashboard">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading reports...</div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout title="Admin Dashboard">
       <div className="space-y-6">
@@ -88,7 +131,7 @@ const AdminDashboard = () => {
           <TabsContent value="total" className="mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>All Reports</CardTitle>
+                <CardTitle>All Reports ({filterReports().length})</CardTitle>
                 <CardDescription>Complete list of all reports with timestamps</CardDescription>
               </CardHeader>
               <CardContent>
@@ -110,7 +153,7 @@ const AdminDashboard = () => {
           <TabsContent value="pending" className="mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Pending Reports</CardTitle>
+                <CardTitle>Pending Reports ({filterReports('pending').length})</CardTitle>
                 <CardDescription>Reports waiting to be processed</CardDescription>
               </CardHeader>
               <CardContent>
@@ -132,7 +175,7 @@ const AdminDashboard = () => {
           <TabsContent value="resolved" className="mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Resolved Reports</CardTitle>
+                <CardTitle>Resolved Reports ({filterReports('resolved').length})</CardTitle>
                 <CardDescription>Successfully completed reports</CardDescription>
               </CardHeader>
               <CardContent>
