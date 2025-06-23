@@ -64,6 +64,8 @@ const AIBot: React.FC = () => {
     setIsLoading(true);
 
     try {
+      console.log('Sending message to OpenAI:', text);
+      
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -104,7 +106,15 @@ Current context: You're assisting a citizen on the RTIRS platform.`
         })
       });
 
+      console.log('OpenAI response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
+      console.log('OpenAI response data:', data);
+      
       const botResponse = data.choices?.[0]?.message?.content || t('botError');
 
       const botMessage: Message = {
