@@ -11,8 +11,14 @@ interface DashboardStatsProps {
   children: React.ReactNode;
 }
 
+interface StatsData {
+  total: number;
+  pending: number;
+  resolved: number;
+}
+
 const DashboardStats = ({ defaultValue, onValueChange, children }: DashboardStatsProps) => {
-  const { data: stats = {} } = useQuery({
+  const { data: stats = { total: 0, pending: 0, resolved: 0 } } = useQuery<StatsData>({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       const [
