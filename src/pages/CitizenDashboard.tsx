@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Layout from '@/components/Layout';
-import AIBot from '@/components/AIBot';
+import ChatBot from '@/components/ChatBot';
 import { supabase } from '@/integrations/supabase/client';
 import { FileText, Plus, BarChart3, AlertTriangle, MapPin, Calendar, CheckCircle2, Clock, User } from 'lucide-react';
 
@@ -236,8 +236,8 @@ const CitizenDashboard = () => {
         </div>
       </div>
 
-      {/* AI Bot Component */}
-      <AIBot />
+      {/* New ChatBot Component */}
+      <ChatBot />
     </Layout>
   );
 };
